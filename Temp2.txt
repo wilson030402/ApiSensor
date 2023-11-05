@@ -1,0 +1,47 @@
+/* DS18B20 1-Wire digital temperature sensor with Arduino example code. More info: https://www.makerguides.com */
+
+// Include the required Arduino libraries:
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// Define to which pin of the Arduino the 1-Wire buses are connected:
+#define ONE_WIRE_BUS_1 2
+#define ONE_WIRE_BUS_2 4
+
+// Create new instances of the oneWire class to communicate with any OneWire devices:
+OneWire oneWire1(ONE_WIRE_BUS_1);
+OneWire oneWire2(ONE_WIRE_BUS_2);
+
+// Pass the oneWire references to DallasTemperature library:
+DallasTemperature sensors1(&oneWire1);
+DallasTemperature sensors2(&oneWire2);
+
+void setup() {
+  // Begin serial communication at a baud rate of 9600:
+  Serial.begin(9600);
+  // Start up the libraries:
+  sensors1.begin();
+  sensors2.begin();
+}
+
+void loop() {
+  // Send the command for all devices on the bus to perform a temperature conversion:
+  sensors1.requestTemperatures();
+  sensors2.requestTemperatures();
+
+  // Fetch the temperature in degrees Celsius for each device index:
+  float tempC1 = sensors1.getTempCByIndex(0); // the index 0 refers to the first device on the first bus
+  float tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bus
+
+  // Print the temperatures in Celsius in the Serial Monitor:
+  Serial.print("Temperature1: ");
+  Serial.print(tempC1);
+  Serial.print(" \xC2\xB0"); // shows degree symbol
+  Serial.print("C  \t");
+
+  Serial.print("Temperature2: ");
+  Serial.print(tempC2);
+  Serial.print(" \xC2\xB0"); // shows degree symbol
+  Serial.print("C  \n");
+  delay(1000);
+}

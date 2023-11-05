@@ -1,0 +1,73 @@
+
+#include "DHT.h"
+#define DHTPIN 5 
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+const int BATTERYPIN = A1; //pin de la batterie
+const int NUM_READINGS = 100;
+float batteryReadings[NUM_READINGS]; // tableau pour stocker les lectures analogiques
+int readIndex = 0; // index de la lecture actuelle
+
+void setup() {
+  Serial.begin(9600);
+  for (int i = 0; i < NUM_READINGS; i++) {
+    batteryReadings[i] = getBattery(); // initialise le tableau avec les valeurs de la batterie actuelle
+  }
+  dht.begin();
+}
+
+float getBattery()
+{
+  float b = analogRead(BATTERYPIN); //valeur analogique
+
+  float V = (b/1023.0)*3.3*2 ; // 3,3=> Vmax d'une pin/ x2=> pont diviseur (facteur 2) /  1023=> résolution de la pin
+  float pourtcent = (V-3.3)/0.9;  // 0,9=>  amplitude de fonctionnement de la batterie 3,3 => 4,2
+  return pourtcent;
+}
+
+float computeMovingAverage() {
+  float sum = 0;
+  for (int i = 0; i < NUM_READINGS; i++) {
+    sum += batteryReadings[i];
+  }
+  return sum / NUM_READINGS;
+}
+
+void loop() {
+ float h = dht.readHumidity();
+ // Read temperature as Celsius (the default)
+ float t = dht.readTemperature();
+ // Read temperature as Fahrenheit (isFahrenheit = true)
+ float f = dht.readTemperature(true);
+
+ // Check if any reads failed and exit early (to try again).
+ if (isnan(h) || isnan(t) || isnan(f)) {
+   Serial.println(F("Failed to read from DHT sensor!"));
+   return;
+ }
+
+  /*****************************BATTERIE*******************************/
+  // Met à jour la valeur actuelle dans le tableau
+  batteryReadings[readIndex] = getBattery();
+  readIndex = (readIndex + 1) % NUM_READINGS; // avance l'index en boucle
+
+  // Calcule la moyenne glissante
+  float movingAverage = computeMovingAverage();
+  if (readIndex == 0) { 
+  Serial.print("Niveau de batterie");  
+  Serial.print(movingAverage);
+  Serial.println("%");
+
+ Serial.print(F("Humidity: "));
+ Serial.print(h);
+ Serial.print(F("%  Temperature: "));
+ Serial.print(t);
+ Serial.println(F("°C Sur DHT22"));
+  
+  }
+
+  delay(10);
+ /*********************************FIN BATTERIE*******************************/
+
+
+}
