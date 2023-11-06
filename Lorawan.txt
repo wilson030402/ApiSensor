@@ -1,0 +1,192 @@
+#include <MKRWAN.h>
+
+// Pour le DHT22
+#include "DHT.h"
+#define DHTPIN 5 
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+
+//Pour la batterie
+const int BATTERYPIN = A1; //pin de la batterie
+const int NUM_READINGS = 100;
+float batteryReadings[NUM_READINGS]; // tableau pour stocker les lectures analogiques
+int readIndex = 0; // index de la lecture actuelle
+
+//Pour les sondes de température
+
+// Include the required Arduino libraries:
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// Define to which pin of the Arduino the 1-Wire buses are connected:
+#define ONE_WIRE_BUS_1 1
+#define ONE_WIRE_BUS_2 4
+
+// Create new instances of the oneWire class to communicate with any OneWire devices:
+OneWire oneWire1(ONE_WIRE_BUS_1);
+OneWire oneWire2(ONE_WIRE_BUS_2);
+
+// Pass the oneWire references to DallasTemperature library:
+DallasTemperature sensors1(&oneWire1);
+DallasTemperature sensors2(&oneWire2);
+
+
+////////////////Balance
+
+#include <HX711.h>
+
+#define calibration_factor 30620 //This value is obtained using the SparkFun_HX711_Calibration sketch
+
+#define LOADCELL_DOUT_PIN  3
+#define LOADCELL_SCK_PIN  2
+
+HX711 scale;
+
+LoRaModem modem;
+String appEui = "AAAAAAAAAAAAAAAA";
+String appKey = "D344021FC0EA0E6132CCA460C51D6716";
+bool connected;
+int err_count;
+short con;
+
+void setup() {
+  Serial.begin(9600);
+  for (int i = 0; i < NUM_READINGS; i++) {
+    batteryReadings[i] = getBattery(); // initialise le tableau avec les valeurs de la batterie actuelle
+  }
+  dht.begin();
+  sensors1.begin();
+  sensors2.begin();
+
+  Serial.println("HX711 scale demo");
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  scale.set_scale(calibration_factor); //This value is obtained by using the SparkFun_HX711_Calibration sketch
+  //scale.tare(); //Assuming there is no weight on the scale at start up, reset the scale to 0 //// A enlever éventuellement
+  Serial.println("Readings:");
+
+  modem.begin(EU868);
+ delay(1000); // apparently the murata dislike if this tempo is removed...
+ connected=false;
+ err_count=0;
+ con = 0;
+}
+
+float getBattery()
+{
+  float b = analogRead(BATTERYPIN); //valeur analogique
+
+  float V = (b/1023.0)*3.3*2 ; // 3,3=> Vmax d'une pin/ x2=> pont diviseur (facteur 2) /  1023=> résolution de la pin
+  float pourtcent = (V-3.3)/0.9;  // 0,9=>  amplitude de fonctionnement de la batterie 3,3 => 4,2
+  return pourtcent;
+}
+
+float computeMovingAverage() {
+  float sum = 0;
+  for (int i = 0; i < NUM_READINGS; i++) {
+    sum += batteryReadings[i];
+  }
+  return sum / NUM_READINGS;
+}
+
+void loop() {
+
+  if ( !connected ) {
+ Serial.print("Join test : ");
+ Serial.println(++con);
+ int ret=modem.joinOTAA(appEui, appKey);
+ if (ret ) {
+ connected=true;
+ modem.minPollInterval(60);
+ Serial.println("Connected");
+ modem.dataRate(5); // switch to SF7
+ delay(100); // because ... more stable
+ err_count=0;
+}
+}
+if ( connected ) {
+  int err=0;
+ float h = dht.readHumidity();
+ // Read temperature as Celsius (the default)
+ float t = dht.readTemperature();
+ // Read temperature as Fahrenheit (isFahrenheit = true)
+ float f = dht.readTemperature(true);
+
+ // Check if any reads failed and exit early (to try again).
+ if (isnan(h) || isnan(t) || isnan(f)) {
+   Serial.println(F("Failed to read from DHT sensor!"));
+   return;
+ }
+
+
+
+  /*****************************BATTERIE*******************************/
+  // Met à jour la valeur actuelle dans le tableau
+  batteryReadings[readIndex] = getBattery();
+  readIndex = (readIndex + 1) % NUM_READINGS; // avance l'index en boucle
+
+  // Calcule la moyenne glissante
+  float movingAverage = computeMovingAverage();
+  if (readIndex == 0) { 
+  Serial.print("Niveau de batterie: ");  
+  Serial.print(movingAverage);
+  Serial.println("%");
+
+ Serial.print(F("Humidity: "));
+ Serial.print(h);
+ Serial.print(F("%  Temperature: "));
+ Serial.print(t);
+ Serial.println(F("°C Sur DHT22"));
+
+
+// Send the command for all devices on the bus to perform a temperature conversion:
+  sensors1.requestTemperatures();
+  sensors2.requestTemperatures();
+
+  // Fetch the temperature in degrees Celsius for each device index:
+  float tempC1 = sensors1.getTempCByIndex(0); // the index 0 refers to the first device on the first bus
+  float tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bus
+ // Print the temperatures in Celsius in the Serial Monitor:
+  Serial.print("Temperature1: ");
+  Serial.print(tempC1);
+  Serial.print(" \xC2\xB0"); // shows degree symbol
+  Serial.print("C  \t");
+
+  Serial.print("Temperature2: ");
+  Serial.print(tempC2);
+  Serial.print(" \xC2\xB0"); // shows degree symbol
+  Serial.print("C  \n");
+
+  Serial.print("Reading: ");
+  Serial.print(scale.get_units()-4.5, 1); //scale.get_units() returns a float
+  Serial.print(" kg"); //You can change this to kg but you'll need to refactor the calibration_factor
+  Serial.println();
+  
+  }
+modem.beginPacket();
+modem.write(h);
+modem.write(t);
+modem.write(scale.get_units()-4.5);
+//modem.write(tempC1);
+err = modem.endPacket();
+ if ( err <= 0 ) {
+ Serial.print("Error : ");
+ Serial.println(err);
+ // Confirmation not received - jam or coverage fault
+ err_count++;
+ if ( err_count > 50 ) {
+ connected = false;
+ }
+ // wait for 2min for duty cycle with SF12 - 1.5s frame
+ for ( int i = 0 ; i < 120 ; i++ ) {
+ delay(1000);
+ }
+ } else {
+ err_count = 0;
+ // wait for 20s for duty cycle with SF7 - 55ms frame
+ delay(20000);
+ Serial.println("Message envoyé");
+}
+}
+  delay(10);
+ /*********************************FIN BATTERIE*******************************/
+}
