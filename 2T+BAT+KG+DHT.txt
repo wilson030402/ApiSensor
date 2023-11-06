@@ -126,7 +126,7 @@ void loop() {
   Serial.print("C  \n");
 
   Serial.print("Reading: ");
-  Serial.print(scale.get_units(), 1); //scale.get_units() returns a float
+  Serial.print(scale.get_units()-4.5, 1); //scale.get_units() returns a float
   Serial.print(" kg"); //You can change this to kg but you'll need to refactor the calibration_factor
   Serial.println();
   
