@@ -128,7 +128,7 @@ if ( connected ) {
   readIndex = (readIndex + 1) % NUM_READINGS; // avance l'index en boucle
 
   // Calcule la moyenne glissante
-  float movingAverage = computeMovingAverage();
+  int movingAverage = computeMovingAverage()*100;
   if (readIndex == 0) { 
   Serial.print("Niveau de batterie: ");  
   Serial.print(movingAverage);
@@ -169,12 +169,12 @@ short h2 = (short)h;
 short poids = (short)scale.get_units()-4.5;
 short Temperature1 = (short)t;
 short Temperature2 = (short)tempC1;
+short batterie = (short)movingAverage;
 modem.beginPacket();
-modem.write(h2);
+modem.write(h2); //
 modem.write(poids);
 modem.write(Temperature1); //DHT22
-Temperature2 = 77;
-modem.write(Temperature2);
+modem.write(batterie);
 err = modem.endPacket();
  if ( err <= 0 ) {
  Serial.print("Error : ");
@@ -192,6 +192,7 @@ err = modem.endPacket();
  err_count = 0;
  // wait for 20s for duty cycle with SF7 - 55ms frame
  delay(20000);
+ 
  Serial.println("Message envoyé");
 }
 }
