@@ -1,0 +1,14 @@
+function decodeUplink(input) {
+ var data = {};
+ //data.key = "A8610A32313A6D05";
+ data.humidity = (input.bytes[1] << 10 | (input.bytes[0])) ;
+ data.poids = (input.bytes[3] << 10 | (input.bytes[2])) ;
+ data.tempDHT = (input.bytes[5] << 10 | (input.bytes[4]));
+ data.batterie = ((input.bytes[7]) << 10 | (input.bytes[6]));
+ data.temperature = ((input.bytes[9] << 10 | (input.bytes[8])));
+ return {
+ data: data,
+ warnings: [],
+ errors: []
+ };
+}
