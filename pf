@@ -1,0 +1,19 @@
+function decodeUplink(input) {
+ var data = {};
+ data.key = "s3w7wcf2gxlbdhhk";
+ if ( ((input.bytes[1] << 14 | (input.bytes[0])) + 0.1*(input.bytes[3] << 14 | (input.bytes[2]))) < 102 ){
+   data.h = (input.bytes[1] << 14 | (input.bytes[0])) + 0.1*(input.bytes[3] << 14 | (input.bytes[2])) ;
+ }
+ 
+ 
+ //data.weight_kg = (input.bytes[5] << 14 | (input.bytes[4])) ;
+ //data.t_i = (input.bytes[7] << 14 | (input.bytes[6]));
+ //data.bv = ((input.bytes[9]) << 14 | (input.bytes[8]));
+ //data.t_0 = ((input.bytes[11] << 14 | (input.bytes[10])))/10;
+ //data.t_1 = ((input.bytes[13] << 14 | (input.bytes[12])))/10;
+ return {
+ data: data,
+ warnings: [],
+ errors: []
+ };
+}
