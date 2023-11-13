@@ -166,13 +166,14 @@ if ( connected ) {
 float tempC1 = (sensors1.getTempCByIndex(0))*10; // the index 0 refers to the first device on the first bus
 float tempC2 = sensors2.getTempCByIndex(0)*10; // the index 0 refers to the first device on the second bu
 
- float h = dht.readHumidity();
+ short h = (short)(dht.readHumidity()*10);
  // Read temperature as Celsius (the default)
- float t = dht.readTemperature();
+short t = (short)(dht.readTemperature()*10);
 
-short h2 = (short)(h);
-float h3 = (h-h2)*10;
-short poids = ((short)scale.get_units()-4.5);
+//float t2= (short)()
+//short h2 = (short)(h);
+//float h3 = (h-h2)*10;
+short poids = ((short)((scale.get_units()-4.5)*100.0));
 short Temperature1 = (short)t;
 //tempC1 = tempC1 * 100;
 short Temperature2 = (short)tempC1;
@@ -181,12 +182,21 @@ short batterie = (short)movingAverage;
 
 modem.beginPacket();
 
-modem.write(h2);
+//modem.write(h2);
+//modem.write(h3);
+modem.write(h);
+modem.write(t);
+//poids = 55;
+//poids = 11111;
 modem.write(poids);
-modem.write(Temperature1);
 modem.write(batterie);
 modem.write(Temperature2);
 modem.write(Temperature3);
+/*modem.write(poids);
+modem.write(Temperature1);
+modem.write(batterie);
+modem.write(Temperature2);
+modem.write(Temperature3);*/
 
 //modem.write(Temperature2);
 err = modem.endPacket();
