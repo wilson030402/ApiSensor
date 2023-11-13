@@ -49,8 +49,8 @@ bool connected;
 int err_count;
 short con;
 
-float tempC1 ;
-float tempC2 ;
+short tempC1 = 2;
+short tempC2 ;
 
 void setup() {
   Serial.begin(9600);
@@ -146,8 +146,8 @@ if ( connected ) {
   sensors2.requestTemperatures();
 
   // Fetch the temperature in degrees Celsius for each device index:
-  tempC1 = sensors1.getTempCByIndex(0); // the index 0 refers to the first device on the first bus
-  tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bus
+  //tempC1 = sensors1.getTempCByIndex(0); // the index 0 refers to the first device on the first bus
+  //tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bus
  // Print the temperatures in Celsius in the Serial Monitor:
   Serial.print("Temperature1: ");
   Serial.print(tempC1);
@@ -165,23 +165,29 @@ if ( connected ) {
   Serial.println();
   
   }
+
+float tempC1 = (sensors1.getTempCByIndex(0)); // the index 0 refers to the first device on the first bus
+tempC1 = tempC1 *10;
+float tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bu
+tempC2 = tempC2 *10;
+
 short h2 = (short)h;
-short poids = ((short)scale.get_units()-4.5)*100;
+short poids = ((short)scale.get_units()-4.5);
 short Temperature1 = (short)t;
-tempC1 = tempC1 * 100;
-short Temperature2 = (short)tempC2;
+//tempC1 = tempC1 * 100;
+short Temperature2 = (short)tempC1;
+short Temperature3 = (short)tempC2;
 short batterie = (short)movingAverage;
-int nombre = 4;
+
 modem.beginPacket();
 
 modem.write(h2);
-modem.print(tempC1);
-//modem.print(Temperature2); 
-//modem.write(h2); //
-//modem.write(poids);
-//modem.print(Temperature2); //DHT22
-//modem.write(batterie);
-//short Temperature2 = (short)tempC1;
+modem.write(poids);
+modem.write(Temperature1);
+modem.write(batterie);
+modem.write(Temperature2);
+modem.write(Temperature3);
+
 //modem.write(Temperature2);
 err = modem.endPacket();
  if ( err <= 0 ) {
