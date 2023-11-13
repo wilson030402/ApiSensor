@@ -166,15 +166,23 @@ if ( connected ) {
   
   }
 short h2 = (short)h;
-short poids = (short)scale.get_units()-4.5;
+short poids = ((short)scale.get_units()-4.5)*100;
 short Temperature1 = (short)t;
-short Temperature2 = (short)tempC1;
+tempC1 = tempC1 * 100;
+short Temperature2 = (short)tempC2;
 short batterie = (short)movingAverage;
+int nombre = 4;
 modem.beginPacket();
-modem.write(h2); //
-modem.write(poids);
-modem.write(Temperature1); //DHT22
-modem.write(batterie);
+
+modem.write(h2);
+modem.print(tempC1);
+//modem.print(Temperature2); 
+//modem.write(h2); //
+//modem.write(poids);
+//modem.print(Temperature2); //DHT22
+//modem.write(batterie);
+//short Temperature2 = (short)tempC1;
+//modem.write(Temperature2);
 err = modem.endPacket();
  if ( err <= 0 ) {
  Serial.print("Error : ");
