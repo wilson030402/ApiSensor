@@ -108,17 +108,17 @@ void loop() {
 }
 if ( connected ) {
   int err=0;
- float h = dht.readHumidity();
+/* float h = dht.readHumidity();
  // Read temperature as Celsius (the default)
  float t = dht.readTemperature();
  // Read temperature as Fahrenheit (isFahrenheit = true)
- float f = dht.readTemperature(true);
+ float f = dht.readTemperature(true); */
 
- // Check if any reads failed and exit early (to try again).
+ /* Check if any reads failed and exit early (to try again).
  if (isnan(h) || isnan(t) || isnan(f)) {
    Serial.println(F("Failed to read from DHT sensor!"));
    return;
- }
+ }*/
 
 
 
@@ -130,15 +130,12 @@ if ( connected ) {
   // Calcule la moyenne glissante
   int movingAverage = computeMovingAverage()*100;
   if (readIndex == 0) { 
-  Serial.print("Niveau de batterie: ");  
-  Serial.print(movingAverage);
-  Serial.println("%");
 
- Serial.print(F("Humidity: "));
+ /*Serial.print(F("Humidity: "));
  Serial.print(h);
  Serial.print(F("%  Temperature: "));
  Serial.print(t);
- Serial.println(F("°C Sur DHT22"));
+ Serial.println(F("°C Sur DHT22"));*/
 
 
 // Send the command for all devices on the bus to perform a temperature conversion:
@@ -166,12 +163,15 @@ if ( connected ) {
   
   }
 
-float tempC1 = (sensors1.getTempCByIndex(0)); // the index 0 refers to the first device on the first bus
-tempC1 = tempC1 *10;
-float tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bu
-tempC2 = tempC2 *10;
+float tempC1 = (sensors1.getTempCByIndex(0))*10; // the index 0 refers to the first device on the first bus
+float tempC2 = sensors2.getTempCByIndex(0)*10; // the index 0 refers to the first device on the second bu
 
-short h2 = (short)h;
+ float h = dht.readHumidity();
+ // Read temperature as Celsius (the default)
+ float t = dht.readTemperature();
+
+short h2 = (short)(h);
+float h3 = (h-h2)*10;
 short poids = ((short)scale.get_units()-4.5);
 short Temperature1 = (short)t;
 //tempC1 = tempC1 * 100;
