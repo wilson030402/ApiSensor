@@ -77,6 +77,7 @@ void setup() {
  err_count=0;
  con = 0;
  pinMode(BUZZER, OUTPUT);
+ pinMode(LED_BUILTIN, OUTPUT);
 }
 
 float getBattery()
@@ -103,6 +104,12 @@ void loop() {
   delay(100);
   digitalWrite(BUZZER, LOW);
   bip=1;
+  digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+  delay(2000);                      // wait for a second
+  digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
+   
+
+
   }
 
   if ( !connected ) {
