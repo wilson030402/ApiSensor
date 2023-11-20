@@ -30,6 +30,10 @@ OneWire oneWire2(ONE_WIRE_BUS_2);
 DallasTemperature sensors1(&oneWire1);
 DallasTemperature sensors2(&oneWire2);
 
+//Buzzer
+#define BUZZER A3
+extern int bip = 0;
+
 
 ////////////////Balance
 
@@ -72,6 +76,7 @@ void setup() {
  connected=false;
  err_count=0;
  con = 0;
+ pinMode(BUZZER, OUTPUT);
 }
 
 float getBattery()
@@ -92,6 +97,13 @@ float computeMovingAverage() {
 }
 
 void loop() {
+
+  if (bip == 0){
+  digitalWrite(BUZZER, HIGH);
+  delay(100);
+  digitalWrite(BUZZER, LOW);
+  bip=1;
+  }
 
   if ( !connected ) {
  Serial.print("Join test : ");
