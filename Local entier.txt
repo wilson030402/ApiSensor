@@ -81,7 +81,7 @@ void setup() {
   Serial.println("HX711 scale demo");
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   scale.set_scale(calibration_factor); //This value is obtained by using the SparkFun_HX711_Calibration sketch
-  scale.tare(); //Assuming there is no weight on the scale at start up, reset the scale to 0 //// A enlever éventuellement
+  //scale.tare(); //Assuming there is no weight on the scale at start up, reset the scale to 0 //// A enlever éventuellement
   Serial.println("Readings:");
 
   Wire.begin(); //LUX
@@ -115,10 +115,10 @@ void loop() {
  float f = dht.readTemperature(true);
 
  // Check if any reads failed and exit early (to try again).
- if (isnan(h) || isnan(t) || isnan(f)) {
-   Serial.println(F("Failed to read from DHT sensor!"));
-   return;
- }
+ //if (isnan(h) || isnan(t) || isnan(f)) {
+  // Serial.println(F("Failed to read from DHT sensor!"));
+   //return;
+ //}
 
 
 
@@ -172,6 +172,37 @@ void loop() {
   Serial.print("lx");
   Serial.print("\n");
   //delay(500);
+
+  for (int i = 0; i < sampleSize; i++) {
+   vReal[i] = analogRead(micPin);
+   vImag[i] = 0;
+   delayMicroseconds(1000000 / samplingFrequency);
+ }
+
+
+ FFT.Windowing(vReal, sampleSize, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+ FFT.Compute(vReal, vImag, sampleSize, FFT_FORWARD);
+ FFT.ComplexToMagnitude(vReal, vImag, sampleSize);
+
+
+ double maxAmplitude = 0;
+ int maxIndex = 0;
+ for (int i = 5; i < (sampleSize / 2); i++) {
+   if (vReal[i] > maxAmplitude) {
+     maxAmplitude = vReal[i];
+     maxIndex = i;
+   }
+ }
+
+
+ double maxFrequency = (double)maxIndex * samplingFrequency / sampleSize;
+
+
+ Serial.print("Highest frequency: ");
+ Serial.print(maxFrequency*1.06667/10);
+ Serial.print(" Hz with amplitude: ");
+ Serial.println(maxAmplitude);
+
   
   }
 
@@ -202,3 +233,4 @@ uint8_t readReg(uint8_t reg, const void* pBuf, size_t size)
   }
   return size;
 }
+
