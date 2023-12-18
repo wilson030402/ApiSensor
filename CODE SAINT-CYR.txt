@@ -1,0 +1,536 @@
+#include <MKRWAN.h>
+#include <ArduinoLowPower.h>
+
+//sleep + delai
+int nbdelay = 120000;
+int sleep = 480000;
+int nbaff;
+
+
+// Pour le DHT22
+#include "DHT.h"
+#define DHTPIN 5
+#define DHTPIN2 6
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+DHT dht2(DHTPIN2, DHTTYPE);
+
+
+
+
+//Pour la batterie
+const int BATTERYPIN = A1; //pin de la batterie
+const int NUM_READINGS = 100;
+float batteryReadings[NUM_READINGS]; // tableau pour stocker les lectures analogiques
+int readIndex = 0; // index de la lecture actuelle
+
+
+
+
+//Pour les sondes de température
+
+
+
+
+// Include the required Arduino libraries:
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+
+
+
+// Define to which pin of the Arduino the 1-Wire buses are connected:
+#define ONE_WIRE_BUS_1 4
+//#define ONE_WIRE_BUS_2 4
+
+
+
+
+// Create new instances of the oneWire class to communicate with any OneWire devices:
+OneWire oneWire(ONE_WIRE_BUS_1);
+//OneWire oneWire2(ONE_WIRE_BUS_2);
+
+
+
+
+// Pass the oneWire references to DallasTemperature library:
+DallasTemperature sensors1(&oneWire);
+DallasTemperature sensors2(&oneWire);
+
+
+
+
+//Buzzer
+#define BUZZER A3
+
+
+
+
+extern int bip = 0;
+
+
+
+
+
+
+
+
+////////////////Balance
+
+
+
+
+#include <HX711.h>
+
+
+
+
+#define calibration_factor 30620 //This value is obtained using the SparkFun_HX711_Calibration sketch
+
+
+
+
+#define LOADCELL_DOUT_PIN  3
+#define LOADCELL_SCK_PIN  2
+
+
+
+
+HX711 scale;
+
+
+
+
+LoRaModem modem;
+String appEui = "AAAAAAAAAAAAAAAA";
+String appKey = "D344021FC0EA0E6132CCA460C51D6716";
+bool connected;
+int err_count;
+short con;
+
+
+
+
+short tempC1 = 2;
+short tempC2 ;
+
+
+
+
+////////////luxmetre/////////
+
+
+
+
+#include "Wire.h"
+#define address 0x23                 //I2C Address 0x23
+
+
+
+
+uint8_t buf[4] = {0};
+uint16_t data, data1;
+float Lux;
+
+
+
+
+
+
+
+
+///////   micro
+
+
+
+
+#include <arduinoFFT.h>
+
+
+
+
+
+
+
+
+// Fréquence max 500 Hz
+// Fréquence min 90 Hz
+
+
+
+
+
+
+
+
+const int micPin = A3;
+const int sampleSize = 256;
+const double samplingFrequency = 10000;
+
+
+
+
+arduinoFFT FFT = arduinoFFT();
+
+
+
+
+double vReal[sampleSize];
+double vImag[sampleSize];
+
+
+
+
+const double cutoffFrequency = 50.0;
+const double RC = 1.0 / (cutoffFrequency * 2 * 3.1416);
+const double dt = 1.0 / samplingFrequency;
+const double alpha = RC / (RC + dt);
+
+
+//Indices du tableau pour récupérer les valeurs des FFT
+int ind_s_bin098_146Hz = 35;
+int ind_s_bin146_195Hz = 45;
+int ind_s_bin195_244Hz = 55;
+int ind_s_bin244_293Hz = 70;
+int ind_s_bin293_342Hz = 80;
+int ind_s_bin342_391Hz = 95;
+int ind_s_bin391_439Hz = 105;
+int ind_s_bin439_488Hz = 120;
+int ind_s_bin488_537Hz = 130;
+int ind_s_bin537_586Hz = 145;
+
+
+
+
+double lastFilteredValue = 0;
+
+
+
+
+void setup() {
+  //Serial.begin(9600);
+  for (int i = 0; i < NUM_READINGS; i++) {
+    batteryReadings[i] = getBattery(); // initialise le tableau avec les valeurs de la batterie actuelle
+  }
+  dht.begin();
+  dht2.begin();
+  sensors1.begin();
+  sensors2.begin();
+
+
+
+
+ // Serial.println("HX711 scale demo");
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  scale.set_scale(calibration_factor); //This value is obtained by using the SparkFun_HX711_Calibration sketch
+  //scale.tare(); //Assuming there is no weight on the scale at start up, reset the scale to 0 //// A enlever éventuellement
+ // Serial.println("Readings:");
+
+
+
+
+  modem.begin(EU868);
+ delay(1000); // apparently the murata dislike if this tempo is removed...
+ connected=false;
+ err_count=0;
+ con = 0;
+ pinMode(BUZZER, OUTPUT);
+ pinMode(LED_BUILTIN, OUTPUT);
+ Wire.begin();
+ //pinMode(TEST, OUTPUT);
+
+
+
+
+
+
+
+
+}
+
+
+
+
+float getBattery()
+{
+  float b = analogRead(BATTERYPIN); //valeur analogique
+
+
+
+
+  float V = (b/1023.0)*3.3*2 ; // 3,3=> Vmax d'une pin/ x2=> pont diviseur (facteur 2) /  1023=> résolution de la pin
+  float pourtcent = (V-3.3)/0.9;  // 0,9=>  amplitude de fonctionnement de la batterie 3,3 => 4,2
+  return pourtcent;
+}
+
+
+
+
+float computeMovingAverage() {
+  float sum = 0;
+  for (int i = 0; i < NUM_READINGS; i++) {
+    sum += batteryReadings[i];
+  }
+  return sum / NUM_READINGS;
+}
+
+
+
+
+uint8_t readReg(uint8_t reg, const void* pBuf, size_t size)
+{
+  if (pBuf == NULL) {
+  //  Serial.println("pBuf ERROR!! : null pointer");
+  }
+  uint8_t * _pBuf = (uint8_t *)pBuf;
+  Wire.beginTransmission(address);
+  Wire.write(&reg, 1);
+  if ( Wire.endTransmission() != 0) {
+    return 0;
+  }
+  delay(20);
+  Wire.requestFrom(address, (uint8_t) size);
+  for (uint16_t i = 0; i < size; i++) {
+    _pBuf[i] = Wire.read();
+  }
+  return size;
+}
+
+void loop() {
+  //Digitalwrite(TEST,HIGH);
+  if (bip == 0){
+  digitalWrite(BUZZER, HIGH);
+  delay(100);
+  digitalWrite(BUZZER, LOW);
+  bip=1;
+  digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+  delay(2000);                      // wait for a second
+  digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
+   
+  }
+
+  if ( !connected ) {
+// Serial.print("Join test : ");
+// Serial.println(++con);
+ int ret=modem.joinOTAA(appEui, appKey);
+ if (ret ) {
+ connected=true;
+ modem.minPollInterval(60);
+// Serial.println("Connected");
+ modem.dataRate(5); // switch to SF7
+ delay(100); // because ... more stable
+ err_count=0;
+}
+}
+if ( connected ) {
+  int err=0;
+/* float h = dht.readHumidity();
+ // Read temperature as Celsius (the default)
+ float t = dht.readTemperature();
+ // Read temperature as Fahrenheit (isFahrenheit = true)
+ float f = dht.readTemperature(true); */
+
+ /* Check if any reads failed and exit early (to try again).
+ if (isnan(h) || isnan(t) || isnan(f)) {
+   Serial.println(F("Failed to read from DHT sensor!"));
+   return;
+ }*/
+
+  /****************************BATTERIE******************************/
+  // Met à jour la valeur actuelle dans le tableau
+  batteryReadings[readIndex] = getBattery();
+  readIndex = (readIndex + 1) % NUM_READINGS; // avance l'index en boucle
+
+  // Calcule la moyenne glissante
+  int movingAverage = computeMovingAverage()*100;
+  if (readIndex == 0) {
+
+ /*Serial.print(F("Humidity: "));
+ Serial.print(h);
+ Serial.print(F("%  Temperature: "));
+ Serial.print(t);
+ Serial.println(F("°C Sur DHT22"));*/
+
+// Send the command for all devices on the bus to perform a temperature conversion:
+  sensors1.requestTemperatures();
+  sensors2.requestTemperatures();
+
+
+  // Fetch the temperature in degrees Celsius for each device index:
+  //tempC1 = sensors1.getTempCByIndex(0); // the index 0 refers to the first device on the first bus
+  //tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bus
+ // Print the temperatures in Celsius in the Serial Monitor:
+/*  Serial.print("Temperature1: ");
+  Serial.print(tempC1);
+  Serial.print(" \xC2\xB0"); // shows degree symbol
+  Serial.print("C  \t");
+
+  Serial.print("Temperature2: ");
+  Serial.print(tempC2);
+  Serial.print(" \xC2\xB0"); // shows degree symbol
+  Serial.print("C  \n");
+
+  Serial.print("Reading: ");
+  Serial.print(scale.get_units()-4.5, 1); //scale.get_units() returns a float
+  Serial.print(" kg"); //You can change this to kg but you'll need to refactor the calibration_factor
+  Serial.println();*/
+ 
+  }
+
+
+float tempC1 = (sensors1.getTempCByIndex(0))*10; // the index 0 refers to the first device on the first bus
+float tempC2 = sensors2.getTempCByIndex(1)*10; // the index 0 refers to the first device on the second bu
+
+
+ short h = (short)(dht.readHumidity()*10);
+ // Read temperature as Celsius (the default)
+short t = (short)(dht.readTemperature()*10);
+short h2 = (short)(dht2.readHumidity()*10);
+ // Read temperature as Celsius (the default)
+short t2 = (short)(dht2.readTemperature()*10);
+//float t2= (short)()
+//short h2 = (short)(h);
+//float h3 = (h-h2)*10;
+short poids = ((short)((scale.get_units()-4.5)*100.0));
+if (poids <0 ){
+  poids = 0;
+
+}
+short Temperature1 = (short)t;
+//tempC1 = tempC1 * 100;
+short Temperature2 = (short)tempC1;
+short Temperature3 = (short)tempC2;
+short batterie = (short)movingAverage;
+
+
+readReg(0x10, buf, 2);              //Register Address 0x10
+data = buf[0] << 8 | buf[1];
+Lux = (((float)data )/1.2)*1.13-24.43;
+short lumiere = (short)Lux;
+
+/*for (int i = 0; i < sampleSize; i++) {
+   vReal[i] = analogRead(micPin);
+   vImag[i] = 0;
+   delayMicroseconds(1000000 / samplingFrequency);
+ }
+
+ FFT.Windowing(vReal, sampleSize, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+ FFT.Compute(vReal, vImag, sampleSize, FFT_FORWARD);
+ FFT.ComplexToMagnitude(vReal, vImag, sampleSize);
+
+ double maxAmplitude = 0;
+ int maxIndex = 0;
+ for (int i = 5; i < (sampleSize / 2); i++) {
+   if (vReal[i] > maxAmplitude) {
+     maxAmplitude = vReal[i];
+     maxIndex = i;
+   }
+ }
+
+ double maxFrequency = (double)maxIndex * samplingFrequency / sampleSize;
+*/
+for (int i = 0; i < sampleSize; i++) {
+  vReal[i] = analogRead(micPin);
+  vImag[i] = 0;
+  delayMicroseconds(1000000 / samplingFrequency);
+}
+
+
+FFT.Windowing(vReal, sampleSize, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+FFT.Compute(vReal, vImag, sampleSize, FFT_FORWARD);
+FFT.ComplexToMagnitude(vReal, vImag, sampleSize);
+
+short s_bin098_146Hz = (short)vReal[ind_s_bin098_146Hz];
+short s_bin146_195Hz = (short)vReal[ind_s_bin146_195Hz];
+short s_bin195_244Hz = (short)vReal[ind_s_bin195_244Hz];
+short s_bin244_293Hz = (short)vReal[ind_s_bin244_293Hz];
+short s_bin293_342Hz = (short)vReal[ind_s_bin293_342Hz];
+short s_bin342_391Hz = (short)vReal[ind_s_bin342_391Hz];
+short s_bin391_439Hz = (short)vReal[ind_s_bin391_439Hz];
+short s_bin439_488Hz = (short)vReal[ind_s_bin439_488Hz];
+short s_bin488_537Hz = (short)vReal[ind_s_bin488_537Hz];
+short s_bin537_586Hz = (short)vReal[ind_s_bin537_586Hz];
+
+
+
+modem.beginPacket();
+//modem.write(h2);
+//modem.write(h3);
+modem.write(h);
+modem.write(t);
+//poids = 55;
+//poids = 11111;
+modem.write(poids);
+modem.write(batterie);
+modem.write(Temperature2);
+modem.write(Temperature3);
+modem.write(lumiere);
+
+
+
+//modem.write() freq
+//modem.write(Temperature2);
+modem.write(s_bin098_146Hz);
+modem.write(s_bin146_195Hz);
+modem.write(s_bin195_244Hz);
+modem.write(s_bin244_293Hz);
+modem.write(s_bin293_342Hz);
+modem.write(s_bin342_391Hz);
+modem.write(s_bin391_439Hz);
+modem.write(s_bin439_488Hz);
+modem.write(s_bin488_537Hz);
+modem.write(s_bin537_586Hz);
+
+modem.write(h2); // DHT exterieur
+modem.write(t2); // DHT exterieur
+
+
+
+
+
+err = modem.endPacket();
+ if ( err <= 0 ) {
+ //Serial.print("Error : ");
+ //Serial.println(err);
+ // Confirmation not received - jam or coverage fault
+ err_count++;
+ if ( err_count > 50 ) {
+ connected = false;
+ }
+ // wait for 2min for duty cycle with SF12 - 1.5s frame
+ for ( int i = 0 ; i < 120 ; i++ ) {
+ delay(1000);
+ }
+ } else {
+ err_count = 0;
+ // wait for 20s for duty cycle with SF7 - 55ms frame
+ 
+ LowPower.sleep(sleep);
+ delay(nbdelay); //120000
+ //Serial.println("Message envoyé");
+
+ /*if (!modem.available()) {
+    Serial.println("No downlink message received at this time.");
+    return;
+  }*/
+    
+  int i = 0;
+  char rcv[64];
+  while (modem.available()) {
+     rcv[i++] = (char)modem.read();
+     
+  }
+  nbaff = (rcv[0] << 24) |  (rcv[1] << 16) | (rcv[2] << 8) |  rcv[3];
+  short short1 = ((nbaff >> 16) & 0xFFFF);
+  short short2 = (nbaff & 0xFFFF);
+  sleep = short1 * 60*1000 ;
+  nbdelay = short2 * 60*1000 ;
+  //Serial.println(short1);
+  //Serial.println(short2);
+}
+}
+
+
+  delay(10);
+ /********************************FIN BATTERIE******************************/
+}
