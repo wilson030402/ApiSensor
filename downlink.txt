@@ -335,30 +335,25 @@ err = modem.endPacket();
  // wait for 20s for duty cycle with SF7 - 55ms frame
  
  //LowPower.sleep(480000);
- delay(nbaff); //120000
+ delay(20000); //120000
  //Serial.println("Message envoyé");
 
- if (!modem.available()) {
+ /*if (!modem.available()) {
     Serial.println("No downlink message received at this time.");
     return;
-  }
+  }*/
     
   int i = 0;
   char rcv[64];
   while (modem.available()) {
-    rcv[i++] = (char)modem.read();
-    //nbaff = (int)modem.read();
-    //nbaff = nbaff*1000;
-    ///delai = (int)nbaff;
-    //Serial.print(nbaff);
-    
+     rcv[i++] = (char)modem.read();
+     
   }
-  /*Serial.print("Received: ");
-  nbaff = nbaff*1000;
-  Serial.print(nbaff);
-  Serial.println();*/
-  nbaff = (rcv[0] << 24) ||  (rcv[1] << 16) ||  (rcv[2] << 8) ||  rcv[3];
-  Serial.print(nbaff);
+  nbaff = (rcv[0] << 24) |  (rcv[1] << 16) | (rcv[2] << 8) |  rcv[3];
+  short short1 = ((nbaff >> 16) & 0xFFFF);
+  short short2 = (nbaff & 0xFFFF);
+  //Serial.println(short1);
+  //Serial.println(short2);
 }
 }
   delay(10);
