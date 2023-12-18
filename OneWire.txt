@@ -1,0 +1,42 @@
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// Définir la broche à laquelle les deux bus 1-Wire sont connectés:
+#define ONE_WIRE_BUS 2
+
+// Créer une seule instance de la classe OneWire pour les deux bus:
+OneWire oneWire(ONE_WIRE_BUS);
+
+// Passer la référence OneWire à la bibliothèque DallasTemperature pour les deux bus:
+DallasTemperature sensors1(&oneWire);
+DallasTemperature sensors2(&oneWire);
+
+void setup() {
+  // Commencer la communication série à une vitesse de bauds de 9600:
+  Serial.begin(9600);
+  // Démarrer les bibliothèques:
+  sensors1.begin();
+  sensors2.begin();
+}
+
+void loop() {
+  // Envoyer la commande pour que tous les dispositifs sur le bus effectuent une conversion de température:
+  sensors1.requestTemperatures();
+  sensors2.requestTemperatures();
+
+  // Obtenir la température en degrés Celsius pour chaque indice de dispositif:
+  float tempC1 = sensors1.getTempCByIndex(0); // L'indice 0 se réfère au premier dispositif sur le premier bus
+  float tempC2 = sensors2.getTempCByIndex(1); // L'indice 0 se réfère au premier dispositif sur le deuxième bus
+
+  // Afficher les températures en Celsius dans le moniteur série:
+  Serial.print("Temperature1: ");
+  Serial.print(tempC1);
+  Serial.print(" \xC2\xB0"); // affiche le symbole degré
+  Serial.print("C  \t");
+
+  Serial.print("Temperature2: ");
+  Serial.print(tempC2);
+  Serial.print(" \xC2\xB0"); // affiche le symbole degré
+  Serial.print("C  \n");
+  delay(1000);
+}
