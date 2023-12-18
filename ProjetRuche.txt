@@ -38,22 +38,22 @@ int readIndex = 0; // index de la lecture actuelle
 
 
 // Define to which pin of the Arduino the 1-Wire buses are connected:
-#define ONE_WIRE_BUS_1 1
-#define ONE_WIRE_BUS_2 4
+#define ONE_WIRE_BUS_1 4
+//#define ONE_WIRE_BUS_2 4
 
 
 
 
 // Create new instances of the oneWire class to communicate with any OneWire devices:
-OneWire oneWire1(ONE_WIRE_BUS_1);
-OneWire oneWire2(ONE_WIRE_BUS_2);
+OneWire oneWire(ONE_WIRE_BUS_1);
+//OneWire oneWire2(ONE_WIRE_BUS_2);
 
 
 
 
 // Pass the oneWire references to DallasTemperature library:
-DallasTemperature sensors1(&oneWire1);
-DallasTemperature sensors2(&oneWire2);
+DallasTemperature sensors1(&oneWire);
+DallasTemperature sensors2(&oneWire);
 
 
 
@@ -376,7 +376,7 @@ if ( connected ) {
 
 
 float tempC1 = (sensors1.getTempCByIndex(0))*10; // the index 0 refers to the first device on the first bus
-float tempC2 = sensors2.getTempCByIndex(0)*10; // the index 0 refers to the first device on the second bu
+float tempC2 = sensors2.getTempCByIndex(1)*10; // the index 0 refers to the first device on the second bu
 
 
  short h = (short)(dht.readHumidity()*10);
