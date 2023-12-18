@@ -6,7 +6,6 @@ int nbdelay = 120000;
 int sleep = 480000;
 int nbaff;
 
-
 // Pour le DHT22
 #include "DHT.h"
 #define DHTPIN 5
@@ -15,91 +14,38 @@ int nbaff;
 DHT dht(DHTPIN, DHTTYPE);
 DHT dht2(DHTPIN2, DHTTYPE);
 
-
-
-
 //Pour la batterie
 const int BATTERYPIN = A1; //pin de la batterie
 const int NUM_READINGS = 100;
 float batteryReadings[NUM_READINGS]; // tableau pour stocker les lectures analogiques
 int readIndex = 0; // index de la lecture actuelle
 
-
-
-
-//Pour les sondes de température
-
-
-
-
 // Include the required Arduino libraries:
 #include <OneWire.h>
 #include <DallasTemperature.h>
-
-
-
 
 // Define to which pin of the Arduino the 1-Wire buses are connected:
 #define ONE_WIRE_BUS_1 4
 //#define ONE_WIRE_BUS_2 4
 
-
-
-
 // Create new instances of the oneWire class to communicate with any OneWire devices:
 OneWire oneWire(ONE_WIRE_BUS_1);
 //OneWire oneWire2(ONE_WIRE_BUS_2);
-
-
-
 
 // Pass the oneWire references to DallasTemperature library:
 DallasTemperature sensors1(&oneWire);
 DallasTemperature sensors2(&oneWire);
 
-
-
-
 //Buzzer
 #define BUZZER A3
-
-
-
-
 extern int bip = 0;
-
-
-
-
-
-
-
-
 ////////////////Balance
-
-
-
-
 #include <HX711.h>
-
-
-
-
 #define calibration_factor 30620 //This value is obtained using the SparkFun_HX711_Calibration sketch
-
-
-
-
 #define LOADCELL_DOUT_PIN  3
 #define LOADCELL_SCK_PIN  2
 
-
-
-
 HX711 scale;
-
-
-
 
 LoRaModem modem;
 String appEui = "AAAAAAAAAAAAAAAA";
@@ -108,85 +54,31 @@ bool connected;
 int err_count;
 short con;
 
-
-
-
 short tempC1 = 2;
 short tempC2 ;
 
-
-
-
 ////////////luxmetre/////////
-
-
-
 
 #include "Wire.h"
 #define address 0x23                 //I2C Address 0x23
-
-
-
-
 uint8_t buf[4] = {0};
 uint16_t data, data1;
 float Lux;
-
-
-
-
-
-
-
-
 ///////   micro
-
-
-
-
 #include <arduinoFFT.h>
-
-
-
-
-
-
-
-
 // Fréquence max 500 Hz
 // Fréquence min 90 Hz
-
-
-
-
-
-
-
 
 const int micPin = A3;
 const int sampleSize = 256;
 const double samplingFrequency = 10000;
-
-
-
-
 arduinoFFT FFT = arduinoFFT();
-
-
-
-
 double vReal[sampleSize];
 double vImag[sampleSize];
-
-
-
-
 const double cutoffFrequency = 50.0;
 const double RC = 1.0 / (cutoffFrequency * 2 * 3.1416);
 const double dt = 1.0 / samplingFrequency;
 const double alpha = RC / (RC + dt);
-
-
 //Indices du tableau pour récupérer les valeurs des FFT
 int ind_s_bin098_146Hz = 35;
 int ind_s_bin146_195Hz = 45;
@@ -199,13 +91,7 @@ int ind_s_bin439_488Hz = 120;
 int ind_s_bin488_537Hz = 130;
 int ind_s_bin537_586Hz = 145;
 
-
-
-
 double lastFilteredValue = 0;
-
-
-
 
 void setup() {
   //Serial.begin(9600);
@@ -217,17 +103,11 @@ void setup() {
   sensors1.begin();
   sensors2.begin();
 
-
-
-
  // Serial.println("HX711 scale demo");
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   scale.set_scale(calibration_factor); //This value is obtained by using the SparkFun_HX711_Calibration sketch
   //scale.tare(); //Assuming there is no weight on the scale at start up, reset the scale to 0 //// A enlever éventuellement
  // Serial.println("Readings:");
-
-
-
 
   modem.begin(EU868);
  delay(1000); // apparently the murata dislike if this tempo is removed...
@@ -237,34 +117,15 @@ void setup() {
  pinMode(BUZZER, OUTPUT);
  pinMode(LED_BUILTIN, OUTPUT);
  Wire.begin();
- //pinMode(TEST, OUTPUT);
-
-
-
-
-
-
-
-
 }
-
-
-
 
 float getBattery()
 {
   float b = analogRead(BATTERYPIN); //valeur analogique
-
-
-
-
   float V = (b/1023.0)*3.3*2 ; // 3,3=> Vmax d'une pin/ x2=> pont diviseur (facteur 2) /  1023=> résolution de la pin
   float pourtcent = (V-3.3)/0.9;  // 0,9=>  amplitude de fonctionnement de la batterie 3,3 => 4,2
   return pourtcent;
 }
-
-
-
 
 float computeMovingAverage() {
   float sum = 0;
@@ -273,10 +134,6 @@ float computeMovingAverage() {
   }
   return sum / NUM_READINGS;
 }
-
-
-
-
 uint8_t readReg(uint8_t reg, const void* pBuf, size_t size)
 {
   if (pBuf == NULL) {
@@ -355,7 +212,6 @@ if ( connected ) {
   sensors1.requestTemperatures();
   sensors2.requestTemperatures();
 
-
   // Fetch the temperature in degrees Celsius for each device index:
   //tempC1 = sensors1.getTempCByIndex(0); // the index 0 refers to the first device on the first bus
   //tempC2 = sensors2.getTempCByIndex(0); // the index 0 refers to the first device on the second bus
@@ -377,10 +233,8 @@ if ( connected ) {
  
   }
 
-
 float tempC1 = (sensors1.getTempCByIndex(0))*10; // the index 0 refers to the first device on the first bus
 float tempC2 = sensors2.getTempCByIndex(1)*10; // the index 0 refers to the first device on the second bu
-
 
  short h = (short)(dht.readHumidity()*10);
  // Read temperature as Celsius (the default)
@@ -466,8 +320,6 @@ modem.write(Temperature2);
 modem.write(Temperature3);
 modem.write(lumiere);
 
-
-
 //modem.write() freq
 //modem.write(Temperature2);
 modem.write(s_bin098_146Hz);
@@ -483,10 +335,6 @@ modem.write(s_bin537_586Hz);
 
 modem.write(h2); // DHT exterieur
 modem.write(t2); // DHT exterieur
-
-
-
-
 
 err = modem.endPacket();
  if ( err <= 0 ) {
@@ -529,7 +377,6 @@ err = modem.endPacket();
   //Serial.println(short2);
 }
 }
-
 
   delay(10);
  /********************************FIN BATTERIE******************************/
