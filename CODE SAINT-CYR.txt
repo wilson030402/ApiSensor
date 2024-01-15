@@ -2,9 +2,12 @@
 #include <ArduinoLowPower.h>
 
 //sleep + delai
-int nbdelay = 120000;
-int sleep = 480000;
+int nbdelay = 30000;
+int sleep = 30000;
 int nbaff;
+
+short tempo1 = 30000;
+short tempo2 = 30000;
 
 // Pour le DHT22
 #include "DHT.h"
@@ -94,7 +97,7 @@ int ind_s_bin537_586Hz = 145;
 double lastFilteredValue = 0;
 
 void setup() {
-  //Serial.begin(9600);
+  Serial.begin(9600);
   for (int i = 0; i < NUM_READINGS; i++) {
     batteryReadings[i] = getBattery(); // initialise le tableau avec les valeurs de la batterie actuelle
   }
@@ -240,8 +243,10 @@ float tempC2 = sensors2.getTempCByIndex(1)*10; // the index 0 refers to the firs
  // Read temperature as Celsius (the default)
 short t = (short)(dht.readTemperature()*10);
 short h2 = (short)(dht2.readHumidity()*10);
+
  // Read temperature as Celsius (the default)
 short t2 = (short)(dht2.readTemperature()*10);
+
 //float t2= (short)()
 //short h2 = (short)(h);
 //float h3 = (h-h2)*10;
@@ -260,6 +265,9 @@ short batterie = (short)movingAverage;
 readReg(0x10, buf, 2);              //Register Address 0x10
 data = buf[0] << 8 | buf[1];
 Lux = (((float)data )/1.2)*1.13-24.43;
+if (Lux<0){
+  Lux=0;
+}
 short lumiere = (short)Lux;
 
 /*for (int i = 0; i < sampleSize; i++) {
@@ -320,6 +328,7 @@ modem.write(Temperature2);
 modem.write(Temperature3);
 modem.write(lumiere);
 
+
 //modem.write() freq
 //modem.write(Temperature2);
 modem.write(s_bin098_146Hz);
@@ -333,8 +342,18 @@ modem.write(s_bin439_488Hz);
 modem.write(s_bin488_537Hz);
 modem.write(s_bin537_586Hz);
 
+//h2= 4369*10;
+//t2=4369*10;
 modem.write(h2); // DHT exterieur
 modem.write(t2); // DHT exterieur
+
+
+
+
+
+/*Serial.print(h);
+Serial.print("      ");
+Serial.println(t);*/
 
 err = modem.endPacket();
  if ( err <= 0 ) {
@@ -352,17 +371,16 @@ err = modem.endPacket();
  } else {
  err_count = 0;
  // wait for 20s for duty cycle with SF7 - 55ms frame
- 
- LowPower.sleep(sleep);
- delay(nbdelay); //120000
+ //short tempo = 30000;
+ //LowPower.sleep(480000);
+ delay(20000); //120000
  //Serial.println("Message envoyé");
 
- /*if (!modem.available()) {
-    Serial.println("No downlink message received at this time.");
+ if (!modem.available()) {
+    //Serial.println("No downlink message received at this time.");
     return;
-  }*/
-    
-  int i = 0;
+  }
+      int i = 0;
   char rcv[64];
   while (modem.available()) {
      rcv[i++] = (char)modem.read();
@@ -373,6 +391,10 @@ err = modem.endPacket();
   short short2 = (nbaff & 0xFFFF);
   sleep = short1 * 60*1000 ;
   nbdelay = short2 * 60*1000 ;
+  tempo1 = short1;
+  tempo2 = short2;
+  //Serial.println(sleep);
+  //Serial.println(nbdelay);
   //Serial.println(short1);
   //Serial.println(short2);
 }
